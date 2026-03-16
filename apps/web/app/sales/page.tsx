@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { TrendingUp, Search, Plus, FileText, ChevronRight, User, DollarSign, Check, X, Clock, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { DraftQuoteModal } from "@/components/modals/DraftQuoteModal";
 
 const quoteStatusConfig = {
   draft: { label: "ร่าง", color: "text-slate-400", bg: "bg-slate-400/10" },
@@ -29,6 +31,8 @@ const leadStatusConfig = {
 
 export default function SalesPage() {
   const [search, setSearch] = useState("");
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const { t } = useLanguage();
 
   const totalPipeline = mockQuotes
     .filter(q => q.status === "sent" || q.status === "draft")
@@ -42,14 +46,14 @@ export default function SalesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">ไปป์ไลน์การขาย</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("sales")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Pipeline รวม ฿{(totalPipeline / 1000).toFixed(0)}K • Win Rate {winRate}%
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setQuoteModalOpen(true)}>
           <Plus className="w-4 h-4" />
-          สร้างใบเสนอราคา
+          {t("createQuote")}
         </Button>
       </div>
 
@@ -57,7 +61,7 @@ export default function SalesPage() {
       <div className="grid grid-cols-4 gap-4">
         <Card className="p-4 bg-card border-border text-center">
           <div className="text-2xl font-bold text-blue-400">{mockLeads.length}</div>
-          <div className="text-xs text-muted-foreground mt-1">Leads</div>
+          <div className="text-xs text-muted-foreground mt-1">{t("leads")}</div>
         </Card>
         <Card className="p-4 bg-card border-border text-center">
           <div className="text-2xl font-bold text-amber-400">{mockQuotes.filter(q => q.status === "sent").length}</div>
@@ -76,9 +80,9 @@ export default function SalesPage() {
       {/* Tabs */}
       <Tabs defaultValue="quotes">
         <TabsList className="bg-secondary border border-border">
-          <TabsTrigger value="leads">Leads ({mockLeads.length})</TabsTrigger>
-          <TabsTrigger value="quotes">ใบเสนอราคา ({mockQuotes.length})</TabsTrigger>
-          <TabsTrigger value="deals">ดีล ({mockDeals.length})</TabsTrigger>
+          <TabsTrigger value="leads">{t("leads")} ({mockLeads.length})</TabsTrigger>
+          <TabsTrigger value="quotes">{t("quotes")} ({mockQuotes.length})</TabsTrigger>
+          <TabsTrigger value="deals">{t("deals")} ({mockDeals.length})</TabsTrigger>
         </TabsList>
 
         {/* Leads Tab */}
@@ -112,7 +116,14 @@ export default function SalesPage() {
                       <div className="text-xs text-muted-foreground">ประมาณการ</div>
                     </div>
                     <div className="flex gap-2 shrink-0">
-                      <Button variant="outline" size="sm" className="text-xs h-7">สร้าง Quote</Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => setQuoteModalOpen(true)}
+                      >
+                        {t("createQuote")}
+                      </Button>
                     </div>
                   </div>
                 </Card>
@@ -123,11 +134,15 @@ export default function SalesPage() {
 
         {/* Quotes Tab */}
         <TabsContent value="quotes" className="mt-4">
-          <div className="mb-3">
-            <div className="relative max-w-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="relative max-w-sm flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input placeholder="ค้นหาใบเสนอราคา..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 bg-secondary border-border" />
             </div>
+            <Button className="gap-2 shrink-0" onClick={() => setQuoteModalOpen(true)}>
+              <Plus className="w-4 h-4" />
+              {t("createQuote")}
+            </Button>
           </div>
           <div className="space-y-3">
             {mockQuotes
@@ -210,6 +225,8 @@ export default function SalesPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <DraftQuoteModal open={quoteModalOpen} onClose={() => setQuoteModalOpen(false)} />
     </div>
   );
 }

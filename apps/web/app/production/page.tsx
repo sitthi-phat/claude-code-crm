@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Printer, Calendar, AlertCircle, ChevronRight, Clock, CheckCircle, Package, Truck, Layers, Plus } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { NewJobModal } from "@/components/modals/NewJobModal";
 
 const stages: { id: JobStage; label: string; icon: React.ElementType; color: string; bg: string }[] = [
   { id: "pre-press", label: "Pre-press", icon: Layers, color: "text-purple-400", bg: "bg-purple-400/10" },
@@ -63,27 +65,29 @@ function JobCard({ job }: { job: PrintJob }) {
 export default function ProductionPage() {
   const activeJobs = mockJobs.filter(j => j.stage !== "done");
   const completedJobs = mockJobs.filter(j => j.stage === "done");
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const { t } = useLanguage();
 
   return (
     <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">งานผลิต</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("production")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {activeJobs.length} งาน Active • {completedJobs.length} งานเสร็จแล้ว
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setJobModalOpen(true)}>
           <Plus className="w-4 h-4" />
-          สร้างงานใหม่
+          {t("createJob")}
         </Button>
       </div>
 
       <Tabs defaultValue="kanban">
         <TabsList className="bg-secondary border border-border">
           <TabsTrigger value="kanban">Kanban Board</TabsTrigger>
-          <TabsTrigger value="history">ประวัติงาน</TabsTrigger>
+          <TabsTrigger value="history">{t("jobHistory")}</TabsTrigger>
         </TabsList>
 
         {/* Kanban */}
@@ -153,6 +157,8 @@ export default function ProductionPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <NewJobModal open={jobModalOpen} onClose={() => setJobModalOpen(false)} />
     </div>
   );
 }

@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Package, Search, AlertTriangle, AlertCircle, ShoppingCart, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { AddMaterialModal } from "@/components/modals/AddMaterialModal";
 
 const stockStatusConfig = {
   "in-stock": { label: "มีสต็อก", color: "text-emerald-400", bg: "bg-emerald-400/10" },
@@ -22,6 +24,8 @@ export default function MaterialsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const { t } = useLanguage();
 
   const categories = [...new Set(mockMaterials.map(m => m.category))];
 
@@ -41,7 +45,7 @@ export default function MaterialsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">วัตถุดิบ</h1>
+          <h1 className="text-2xl font-bold text-foreground">{t("materials")}</h1>
           <p className="text-sm text-muted-foreground mt-1">
             {mockMaterials.length} รายการ •
             <span className="text-red-400 ml-1">{alertCount} รายการต้องดูแล</span>
@@ -52,9 +56,9 @@ export default function MaterialsPage() {
             <ShoppingCart className="w-4 h-4" />
             สั่งซื้อทั้งหมด ({alertCount})
           </Button>
-          <Button className="gap-2">
+          <Button className="gap-2" onClick={() => setMaterialModalOpen(true)}>
             <Plus className="w-4 h-4" />
-            เพิ่มวัตถุดิบ
+            {t("addMaterial")}
           </Button>
         </div>
       </div>
@@ -176,6 +180,8 @@ export default function MaterialsPage() {
           </TableBody>
         </Table>
       </Card>
+
+      <AddMaterialModal open={materialModalOpen} onClose={() => setMaterialModalOpen(false)} />
     </div>
   );
 }
