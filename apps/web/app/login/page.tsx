@@ -25,7 +25,7 @@ export default function LoginPage() {
 
     await new Promise(r => setTimeout(r, 600));
 
-    if (email === "admin@printcrm.com" && password === "password123") {
+    if (email === "admin@company.com" && password === "admin1234") {
       localStorage.setItem("isLoggedIn", "true");
       router.push("/");
     } else {
@@ -80,7 +80,7 @@ export default function LoginPage() {
               <label className="text-sm font-medium text-foreground">{t("email")}</label>
               <Input
                 type="email"
-                placeholder="admin@printcrm.com"
+                placeholder="admin@company.com"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
@@ -151,8 +151,8 @@ export default function LoginPage() {
           <p className="text-xs text-muted-foreground mb-1">
             {language === "th" ? "ข้อมูลสำหรับทดสอบ" : "Demo credentials"}
           </p>
-          <p className="text-xs font-mono text-foreground">admin@printcrm.com</p>
-          <p className="text-xs font-mono text-foreground">password123</p>
+          <p className="text-xs font-mono text-foreground">admin@company.com</p>
+          <p className="text-xs font-mono text-foreground">admin1234</p>
         </div>
       </div>
     </div>

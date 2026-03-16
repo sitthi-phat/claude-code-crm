@@ -31,8 +31,8 @@ npm run dev
 ## Mock Credentials (Phase 1)
 
 ```
-Email:    admin@printcrm.com
-Password: password123
+Email:    admin@company.com
+Password: admin1234
 ```
 
 ## หน้าที่มีในระบบ
