@@ -1,4 +1,4 @@
-# PrintCRM - ระบบบริหารงานพิมพ์
+# MAllPrint - CRM ระบบบริหารงานพิมพ์
 
 Phase 1 CRM สำหรับธุรกิจพิมพ์ สร้างด้วย Next.js + Tailwind CSS + shadcn/ui
 

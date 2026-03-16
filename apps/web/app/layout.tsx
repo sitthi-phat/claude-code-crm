@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PrintCRM - ระบบบริหารงานพิมพ์",
+  title: "MAllPrint - CRM ระบบบริหารงานพิมพ์",
   description: "CRM สำหรับธุรกิจพิมพ์ - จัดการลูกค้า งานผลิต และยอดขาย",
 };
 

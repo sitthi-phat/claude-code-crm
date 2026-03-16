@@ -102,7 +102,7 @@ export default function Sidebar() {
           <Printer className="w-5 h-5 text-primary" />
         </div>
         <div>
-          <div className="font-bold text-sm text-foreground">PrintCRM</div>
+          <div className="font-bold text-sm text-foreground">MAllPrint - CRM</div>
           <div className="text-xs text-muted-foreground">ระบบบริหารงานพิมพ์</div>
         </div>
       </div>

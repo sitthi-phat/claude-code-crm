@@ -214,7 +214,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">ชื่อบริษัท</label>
-                <Input defaultValue="PrintCRM Co., Ltd." className="bg-secondary border-border" />
+                <Input defaultValue="MAllPrint - CRM Co., Ltd." className="bg-secondary border-border" />
               </div>
               <div className="space-y-2">
                 <label className="text-sm text-muted-foreground">เลขประจำตัวผู้เสียภาษี</label>

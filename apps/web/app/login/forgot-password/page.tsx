@@ -54,7 +54,7 @@ export default function ForgotPasswordPage() {
           <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center mb-4">
             <Printer className="w-7 h-7 text-primary" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground">PrintCRM</h1>
+          <h1 className="text-2xl font-bold text-foreground">MAllPrint - CRM</h1>
         </div>
 
         <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
