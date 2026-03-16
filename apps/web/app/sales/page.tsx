@@ -2,16 +2,18 @@
 
 import { useState } from "react";
 import { mockQuotes, mockLeads, mockDeals } from "@/lib/mock-data/quotes";
+import { mockCompanies, Company } from "@/lib/mock-data/clients";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { TrendingUp, Search, Plus, FileText, ChevronRight, User, DollarSign, Check, X, Clock, ArrowUpRight } from "lucide-react";
+import { Search, Plus, FileText, ChevronRight, User, Check, X } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
 import { DraftQuoteModal } from "@/components/modals/DraftQuoteModal";
+import { ClientQuoteSummaryModal } from "@/components/modals/ClientQuoteSummaryModal";
 
 const quoteStatusConfig = {
   draft: { label: "ร่าง", color: "text-slate-400", bg: "bg-slate-400/10" },
@@ -32,6 +34,8 @@ const leadStatusConfig = {
 export default function SalesPage() {
   const [search, setSearch] = useState("");
   const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [clientSummaryOpen, setClientSummaryOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Company | null>(null);
   const { t } = useLanguage();
 
   const totalPipeline = mockQuotes
@@ -40,6 +44,27 @@ export default function SalesPage() {
 
   const wonValue = mockDeals.filter(d => d.status === "won").reduce((sum, d) => sum + d.value, 0);
   const winRate = mockDeals.length > 0 ? (mockDeals.filter(d => d.status === "won").length / mockDeals.length * 100).toFixed(0) : 0;
+
+  const openClientSummary = (clientId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const client = mockCompanies.find(c => c.id === clientId);
+    if (client) {
+      setSelectedClient(client);
+      setClientSummaryOpen(true);
+    }
+  };
+
+  const openClientSummaryByName = (clientName: string, clientId: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const client = mockCompanies.find(c => c.id === clientId) ||
+      mockCompanies.find(c => c.name.toLowerCase().includes(clientName.toLowerCase()));
+    if (client) {
+      setSelectedClient(client);
+      setClientSummaryOpen(true);
+    }
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -90,6 +115,9 @@ export default function SalesPage() {
           <div className="space-y-3">
             {mockLeads.map(lead => {
               const sConfig = leadStatusConfig[lead.status as keyof typeof leadStatusConfig];
+              const matchedCompany = mockCompanies.find(c =>
+                c.name.toLowerCase().includes(lead.companyName.toLowerCase())
+              );
               return (
                 <Card key={lead.id} className="p-4 bg-card border-border hover:border-primary/30 transition-all">
                   <div className="flex items-center gap-4">
@@ -98,7 +126,16 @@ export default function SalesPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium text-foreground">{lead.companyName}</span>
+                        {matchedCompany ? (
+                          <button
+                            className="font-medium text-foreground hover:text-primary transition-colors underline underline-offset-2 decoration-dotted"
+                            onClick={e => openClientSummary(matchedCompany.id, e)}
+                          >
+                            {lead.companyName}
+                          </button>
+                        ) : (
+                          <span className="font-medium text-foreground">{lead.companyName}</span>
+                        )}
                         <Badge className={cn("text-xs border-0", sConfig.bg, sConfig.color)}>{sConfig.label}</Badge>
                         <span className="text-xs text-muted-foreground px-2 py-0.5 bg-secondary rounded-full">{lead.source}</span>
                       </div>
@@ -161,7 +198,12 @@ export default function SalesPage() {
                             <span className="font-mono text-sm text-muted-foreground">{quote.quoteNumber}</span>
                             <Badge className={cn("text-xs border-0", sConfig.bg, sConfig.color)}>{sConfig.label}</Badge>
                           </div>
-                          <div className="font-medium text-foreground group-hover:text-primary transition-colors">{quote.clientName}</div>
+                          <button
+                            className="font-medium text-foreground hover:text-primary transition-colors text-left underline underline-offset-2 decoration-dotted"
+                            onClick={e => openClientSummaryByName(quote.clientName, quote.clientId, e)}
+                          >
+                            {quote.clientName}
+                          </button>
                           <div className="text-xs text-muted-foreground mt-0.5">
                             {quote.contactName} • สร้าง {quote.createdDate} • หมดอายุ {quote.validUntil}
                           </div>
@@ -192,7 +234,15 @@ export default function SalesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-foreground mb-1">{deal.title}</div>
-                        <div className="text-xs text-muted-foreground">{deal.clientName} • {deal.closeDate}</div>
+                        <div className="text-xs text-muted-foreground">
+                          <button
+                            className="hover:text-primary transition-colors underline underline-offset-2 decoration-dotted"
+                            onClick={e => openClientSummaryByName(deal.clientName, deal.clientId, e)}
+                          >
+                            {deal.clientName}
+                          </button>
+                          {" • "}{deal.closeDate}
+                        </div>
                         <div className="text-xs text-muted-foreground mt-0.5">ดูแลโดย: {deal.assignedTo}</div>
                       </div>
                       <div className="text-emerald-400 font-bold shrink-0">฿{(deal.value / 1000).toFixed(0)}K</div>
@@ -211,7 +261,15 @@ export default function SalesPage() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-foreground mb-1">{deal.title}</div>
-                        <div className="text-xs text-muted-foreground">{deal.clientName} • {deal.closeDate}</div>
+                        <div className="text-xs text-muted-foreground">
+                          <button
+                            className="hover:text-primary transition-colors underline underline-offset-2 decoration-dotted"
+                            onClick={e => openClientSummaryByName(deal.clientName, deal.clientId, e)}
+                          >
+                            {deal.clientName}
+                          </button>
+                          {" • "}{deal.closeDate}
+                        </div>
                         {deal.reason && (
                           <div className="text-xs text-red-400 mt-0.5">เหตุผล: {deal.reason}</div>
                         )}
@@ -227,6 +285,12 @@ export default function SalesPage() {
       </Tabs>
 
       <DraftQuoteModal open={quoteModalOpen} onClose={() => setQuoteModalOpen(false)} />
+
+      <ClientQuoteSummaryModal
+        open={clientSummaryOpen}
+        onClose={() => setClientSummaryOpen(false)}
+        client={selectedClient}
+      />
     </div>
   );
 }

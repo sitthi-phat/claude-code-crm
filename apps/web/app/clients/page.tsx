@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Building2, Search, Plus, ChevronRight, Users, TrendingUp, MapPin } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { NewCompanyModal } from "@/components/modals/NewCompanyModal";
 
 const tierConfig = {
   enterprise: { label: "Enterprise", color: "text-purple-400", bg: "bg-purple-400/10" },
@@ -27,6 +28,7 @@ export default function ClientsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [tierFilter, setTierFilter] = useState("all");
+  const [newCompanyOpen, setNewCompanyOpen] = useState(false);
 
   const filtered = mockCompanies.filter(c => {
     const matchSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -48,7 +50,7 @@ export default function ClientsPage() {
             {mockCompanies.length} บริษัท • มูลค่ารวม ฿{(totalRevenue / 1000000).toFixed(1)}M
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setNewCompanyOpen(true)}>
           <Plus className="w-4 h-4" />
           เพิ่มบริษัทใหม่
         </Button>
@@ -171,6 +173,8 @@ export default function ClientsPage() {
           </div>
         )}
       </div>
+
+      <NewCompanyModal open={newCompanyOpen} onClose={() => setNewCompanyOpen(false)} />
     </div>
   );
 }

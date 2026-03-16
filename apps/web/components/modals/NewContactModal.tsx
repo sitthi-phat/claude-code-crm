@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X } from "lucide-react";
+import { X, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,27 +12,34 @@ import { mockCompanies } from "@/lib/mock-data/clients";
 interface NewContactModalProps {
   open: boolean;
   onClose: () => void;
+  defaultCompanyId?: string;
 }
 
-export function NewContactModal({ open, onClose }: NewContactModalProps) {
+export function NewContactModal({ open, onClose, defaultCompanyId }: NewContactModalProps) {
   const { t, language } = useLanguage();
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
     email: "",
     phone: "",
-    company: "",
+    company: defaultCompanyId ?? "",
     role: "",
+    lineId: "",
+    notes: "",
   });
   const [toast, setToast] = useState(false);
 
   if (!open) return null;
 
   const handleSave = () => {
+    if (!form.firstName) return;
     setToast(true);
     setTimeout(() => {
       onClose();
-      setForm({ firstName: "", lastName: "", email: "", phone: "", company: "", role: "" });
+      setForm({
+        firstName: "", lastName: "", email: "", phone: "",
+        company: defaultCompanyId ?? "", role: "", lineId: "", notes: ""
+      });
     }, 1200);
   };
 
@@ -44,11 +51,16 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
         onClick={onClose}
       />
       {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2">
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 max-h-[90vh] overflow-y-auto">
         <div className="bg-background border border-border rounded-xl shadow-2xl p-6">
           {/* Header */}
           <div className="flex items-center justify-between mb-5">
-            <h2 className="text-base font-semibold text-foreground">{t("newContact")}</h2>
+            <div className="flex items-center gap-2">
+              <User className="w-4 h-4 text-primary" />
+              <h2 className="text-base font-semibold text-foreground">
+                {language === "th" ? "เพิ่มผู้ติดต่อใหม่" : "Add New Contact"}
+              </h2>
+            </div>
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
               <X className="w-4 h-4" />
             </button>
@@ -56,10 +68,11 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
 
           {/* Form */}
           <div className="space-y-4">
+            {/* First + Last Name */}
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
-                  {language === "th" ? "ชื่อ" : "First Name"}
+                  {language === "th" ? "ชื่อ" : "First Name"} <span className="text-red-400">*</span>
                 </label>
                 <Input
                   value={form.firstName}
@@ -70,7 +83,7 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
               </div>
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-muted-foreground">
-                  {language === "th" ? "นามสกุล" : "Last Name"}
+                  {language === "th" ? "นามสกุล" : "Last Name"} <span className="text-red-400">*</span>
                 </label>
                 <Input
                   value={form.lastName}
@@ -81,6 +94,7 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
               </div>
             </div>
 
+            {/* Email */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">{t("email")}</label>
               <Input
@@ -92,6 +106,7 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
               />
             </div>
 
+            {/* Phone */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
                 {language === "th" ? "โทรศัพท์" : "Phone"}
@@ -104,6 +119,7 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
               />
             </div>
 
+            {/* Company */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
                 {language === "th" ? "บริษัท" : "Company"}
@@ -120,6 +136,7 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
               </Select>
             </div>
 
+            {/* Role / Position */}
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
                 {language === "th" ? "ตำแหน่ง / บทบาท" : "Role / Position"}
@@ -131,12 +148,40 @@ export function NewContactModal({ open, onClose }: NewContactModalProps) {
                 placeholder={language === "th" ? "เช่น ผู้จัดการฝ่ายจัดซื้อ" : "e.g. Purchasing Manager"}
               />
             </div>
+
+            {/* LINE ID */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                LINE ID {language === "th" ? "(ไม่บังคับ)" : "(optional)"}
+              </label>
+              <Input
+                value={form.lineId}
+                onChange={e => setForm(f => ({ ...f, lineId: e.target.value }))}
+                className="bg-secondary border-border"
+                placeholder="@lineid"
+              />
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-medium text-muted-foreground">
+                {language === "th" ? "หมายเหตุ (ไม่บังคับ)" : "Notes (optional)"}
+              </label>
+              <textarea
+                value={form.notes}
+                onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+                className="w-full min-h-[70px] px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                placeholder={language === "th" ? "หมายเหตุเพิ่มเติม..." : "Additional notes..."}
+              />
+            </div>
           </div>
 
           {/* Footer */}
           <div className="flex gap-2 justify-end mt-6">
             <Button variant="outline" onClick={onClose}>{t("cancel")}</Button>
-            <Button onClick={handleSave}>{t("save")}</Button>
+            <Button onClick={handleSave} disabled={!form.firstName}>
+              {t("save")}
+            </Button>
           </div>
         </div>
       </div>

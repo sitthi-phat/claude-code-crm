@@ -3,14 +3,15 @@
 import { useState } from "react";
 import { mockContacts, mockCompanies } from "@/lib/mock-data/clients";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { User, Search, Plus, Mail, Phone, Building2, ChevronRight, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { NewContactModal } from "@/components/modals/NewContactModal";
 
 export default function ContactsPage() {
   const [search, setSearch] = useState("");
+  const [newContactOpen, setNewContactOpen] = useState(false);
 
   const filtered = mockContacts.filter(c =>
     c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -29,7 +30,7 @@ export default function ContactsPage() {
           <h1 className="text-2xl font-bold text-foreground">ผู้ติดต่อทั้งหมด</h1>
           <p className="text-sm text-muted-foreground mt-1">{mockContacts.length} รายชื่อ</p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setNewContactOpen(true)}>
           <Plus className="w-4 h-4" />
           เพิ่มผู้ติดต่อ
         </Button>
@@ -104,6 +105,8 @@ export default function ContactsPage() {
       {filtered.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">ไม่พบผู้ติดต่อที่ค้นหา</div>
       )}
+
+      <NewContactModal open={newContactOpen} onClose={() => setNewContactOpen(false)} />
     </div>
   );
 }
