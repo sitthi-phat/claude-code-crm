@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc --noEmit)",
+      "Bash(npm run build)",
+      "Bash(timeout 20 npm run dev)",
+      "Bash(npm run dev)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\josukekung\\Project\\claude-crm\\apps\\web\\app\\sales\\quotes",
+      "C:\\Users\\josukekung\\Project\\claude-crm\\apps\\web\\app\\production"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "claude-crm",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace=apps/web\" \"npm run dev --workspace=apps/server\"",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:server": "npm run dev --workspace=apps/server"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
