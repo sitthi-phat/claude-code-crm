@@ -28,10 +28,19 @@ npm run dev
 
 แล้วเปิด [http://localhost:3000](http://localhost:3000)
 
+## Mock Credentials (Phase 1)
+
+```
+Email:    admin@printcrm.com
+Password: password123
+```
+
 ## หน้าที่มีในระบบ
 
 | หน้า | URL | รายละเอียด |
 |------|-----|------------|
+| Login | `/login` | Mock authentication |
+| Forgot Password | `/login/forgot-password` | Reset password form |
 | แดชบอร์ด | `/` | KPI Cards, AI Insights, Tasks, Activity Feed |
 | บริษัท | `/clients` | รายชื่อบริษัท + search/filter |
 | รายละเอียดบริษัท | `/clients/[id]` | ผู้ติดต่อ, งาน, ประวัติสื่อสาร |
@@ -46,16 +55,28 @@ npm run dev
 | Automation & AI | `/automation` | Workflows + Charts |
 | ตั้งค่า | `/settings` | Users, Integrations |
 
+## Features (Phase 1)
+
+- **Authentication** — Mock login/logout with AuthGuard on all routes
+- **Theme** — Light / Dark mode toggle (via next-themes)
+- **Language** — EN / TH switcher, default EN (persisted in localStorage)
+- **Quick Add Modals** — New Contact, Draft Quote (with line items + 7% VAT), Log Call
+- **Sales** — Create Quote modal
+- **Production** — Create New Job modal
+- **Inventory** — Add Raw Material modal
+
 ## Tech Stack
 
 - **Frontend**: Next.js 16 (App Router) + TypeScript
-- **Styling**: Tailwind CSS v4 + shadcn/ui (base-nova style)
+- **Styling**: Tailwind CSS v4 + shadcn/ui
 - **Charts**: Recharts
 - **Icons**: Lucide React
+- **Theme**: next-themes
 - **Backend**: Express.js (dev proxy, Phase 1 only)
-- **Data**: Mock data (no real API calls)
+- **Data**: Mock data — no real API calls (`apps/web/lib/mock-data/`)
 
 ## หมายเหตุ
 
 Phase 1 ใช้ mock data ทั้งหมดใน `apps/web/lib/mock-data/`
 ไม่มีการเชื่อมต่อ database หรือ API จริง
+Phase 2 จะเพิ่ม backend API, database, LINE OA, และ microservices
