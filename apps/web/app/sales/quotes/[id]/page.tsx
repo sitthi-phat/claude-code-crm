@@ -16,8 +16,9 @@ const statusConfig = {
   expired: { label: "หมดอายุ", color: "text-amber-400", bg: "bg-amber-400/10" },
 };
 
-export default function QuoteDetailPage({ params }: { params: { id: string } }) {
-  const quote = mockQuotes.find(q => q.id === params.id);
+export default async function QuoteDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const quote = mockQuotes.find(q => q.id === id);
   if (!quote) notFound();
 
   const sConfig = statusConfig[quote.status];

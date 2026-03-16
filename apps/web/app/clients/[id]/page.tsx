@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { mockCompanies, mockCommunications } from "@/lib/mock-data/clients";
 import { mockJobs } from "@/lib/mock-data/jobs";
 import { mockQuotes } from "@/lib/mock-data/quotes";
@@ -62,10 +62,11 @@ const commTypeConfig = {
   meeting: { label: "ประชุม", color: "text-purple-400", bg: "bg-purple-400/10", icon: Users },
 };
 
-export default function ClientDetailPage({ params }: { params: { id: string } }) {
+export default function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params);
   const [addContactOpen, setAddContactOpen] = useState(false);
   const router = useRouter();
-  const company = mockCompanies.find(c => c.id === params.id);
+  const company = mockCompanies.find(c => c.id === id);
   if (!company) notFound();
 
   const companyJobs = mockJobs.filter(j => j.clientId === company.id);

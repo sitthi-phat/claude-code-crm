@@ -25,8 +25,9 @@ const priorityConfig = {
 
 const allStages = ["pre-press", "printing", "finishing", "shipping", "done"];
 
-export default function JobDetailPage({ params }: { params: { id: string } }) {
-  const job = mockJobs.find(j => j.id === params.id);
+export default async function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const job = mockJobs.find(j => j.id === id);
   if (!job) notFound();
 
   const sConfig = stageConfig[job.stage];

@@ -14,8 +14,9 @@ const commTypeConfig = {
   meeting: { label: "ประชุม", color: "text-purple-400", bg: "bg-purple-400/10", icon: Calendar },
 };
 
-export default function ContactDetailPage({ params }: { params: { id: string } }) {
-  const contact = mockContacts.find(c => c.id === params.id);
+export default async function ContactDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const contact = mockContacts.find(c => c.id === id);
   if (!contact) notFound();
 
   const company = mockCompanies.find(co => co.contacts.some(c => c.id === contact.id));
