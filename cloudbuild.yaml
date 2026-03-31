@@ -1,0 +1,59 @@
+steps:
+  # Build API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/api:$COMMIT_SHA'
+      - './apps/server'
+
+  # Build Web image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/web:$COMMIT_SHA'
+      - './apps/web'
+
+  # Push API image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/api:$COMMIT_SHA'
+
+  # Push Web image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/web:$COMMIT_SHA'
+
+  # Deploy API to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'mallprint-crm-api'
+      - '--image=asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/api:$COMMIT_SHA'
+      - '--region=asia-east2'
+      - '--platform=managed'
+      - '--service-account=mallprint-crm-api@gen-lang-client-0453424159.iam.gserviceaccount.com'
+      - '--set-secrets=GOOGLE_CLIENT_ID=google-oauth-client-id:latest,GOOGLE_CLIENT_SECRET=google-oauth-client-secret:latest'
+      - '--set-env-vars=GCP_PROJECT_ID=gen-lang-client-0453424159,BQ_DATASET=mallprint_crm'
+      - '--allow-unauthenticated'
+
+  # Deploy Web to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'mallprint-crm-web'
+      - '--image=asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/web:$COMMIT_SHA'
+      - '--region=asia-east2'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+
+images:
+  - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/api:$COMMIT_SHA'
+  - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/web:$COMMIT_SHA'

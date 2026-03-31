@@ -31,3 +31,14 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Secrets
+*service-account-key.json
+*-sa-key.json
+.env
+.env.local
+apps/server/.env
+apps/web/.env.local
+
+# Docker
+.dockerignore

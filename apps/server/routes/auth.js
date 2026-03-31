@@ -1,21 +1,29 @@
 'use strict'
 
+const { Router } = require('express')
 const { OAuth2Client } = require('google-auth-library')
 const { bigquery, PROJECT_ID } = require('../lib/bigquery')
 
+const router = Router()
 const DATASET = process.env.BQ_DATASET || 'mallprint_crm'
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
-const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization
-  if (!authHeader?.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' })
+// GET /api/auth/me
+// Returns the already-verified user (req.user populated by verifyToken middleware).
+router.get('/me', (req, res) => {
+  res.json({ user: req.user })
+})
+
+// POST /api/auth/verify
+// Verifies a Google ID token and returns user info.
+// Called by the frontend on app load — NOT protected by verifyToken middleware.
+router.post('/verify', async (req, res) => {
+  const { token } = req.body
+  if (!token) {
+    return res.status(400).json({ error: 'token is required' })
   }
 
-  const token = authHeader.split(' ')[1]
-
   try {
-    // Verify Google ID token against the configured OAuth2 client ID
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -23,7 +31,6 @@ const verifyToken = async (req, res, next) => {
     const payload = ticket.getPayload()
     const email = payload.email
 
-    // Look up the user and their role permissions in BigQuery
     const query = `
       SELECT u.id, u.email, u.name, u.avatar, u.role_id, u.role_name, u.status,
              r.perm_dashboard, r.perm_clients, r.perm_sales,
@@ -36,11 +43,11 @@ const verifyToken = async (req, res, next) => {
     const [rows] = await bigquery.query({ query, params: { email } })
 
     if (!rows.length) {
-      return res.status(401).json({ error: 'Unauthorized: User not found or inactive' })
+      return res.status(401).json({ error: 'User not found or inactive' })
     }
 
     const user = rows[0]
-    req.user = {
+    const userData = {
       id: user.id,
       email: user.email,
       name: user.name,
@@ -58,7 +65,7 @@ const verifyToken = async (req, res, next) => {
       },
     }
 
-    // Update last_login asynchronously — do not block the request
+    // Update last_login asynchronously
     bigquery
       .query({
         query: `UPDATE \`${PROJECT_ID}.${DATASET}.users\`
@@ -66,20 +73,13 @@ const verifyToken = async (req, res, next) => {
                 WHERE email = @email`,
         params: { email },
       })
-      .catch((err) => console.error('[auth] Failed to update last_login:', err.message))
+      .catch((err) => console.error('[auth/verify] Failed to update last_login:', err.message))
 
-    next()
+    res.json({ user: userData })
   } catch (err) {
-    console.error('[auth] Token verification error:', err.message)
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' })
+    console.error('[auth/verify] Error:', err.message)
+    res.status(401).json({ error: 'Invalid token' })
   }
-}
+})
 
-const requirePermission = (menu, level = 'view') => (req, res, next) => {
-  const levels = ['none', 'view', 'edit', 'full']
-  const userLevel = req.user?.permissions?.[menu] ?? 'none'
-  if (levels.indexOf(userLevel) >= levels.indexOf(level)) return next()
-  return res.status(403).json({ error: `Forbidden: Requires '${level}' permission on '${menu}'` })
-}
-
-module.exports = { verifyToken, requirePermission }
+module.exports = router

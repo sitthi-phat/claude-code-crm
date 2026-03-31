@@ -1,0 +1,10 @@
+{
+  "name": "scripts",
+  "private": true,
+  "scripts": {
+    "setup-bq": "node setup-bigquery.js"
+  },
+  "dependencies": {
+    "@google-cloud/bigquery": "^7.0.0"
+  }
+}

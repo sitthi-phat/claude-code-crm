@@ -1,62 +1,84 @@
-const express = require('express');
-const cors = require('cors');
-const { verifyToken, requirePermission } = require('./middleware/auth');
+'use strict'
 
-const app = express();
-const PORT = process.env.PORT || 3001;
+require('dotenv').config()
 
-app.use(cors());
-app.use(express.json());
+const express = require('express')
+const cors = require('cors')
+const helmet = require('helmet')
+const rateLimit = require('express-rate-limit')
+const { loadSecrets } = require('./lib/secrets')
+const { verifyToken } = require('./middleware/auth')
 
-// Health check (public)
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
-});
+async function startServer() {
+  // Load secrets from GCP Secret Manager when running in Cloud Run
+  await loadSecrets()
 
-// API info (public)
-app.get('/api', (req, res) => {
-  res.json({
-    message: 'Claude CRM API Server',
-    version: '1.0.0',
-    phase: 1,
-    note: 'Phase 1 uses mock data - this server acts as a dev proxy',
-    auth: 'Phase 2: All /api/* routes will require Authorization: Bearer <google-id-token>',
-  });
-});
+  const app = express()
+  const PORT = process.env.PORT || 8080
 
-// All API routes require auth
-app.use('/api', verifyToken);
+  // Security headers
+  app.use(helmet())
 
-// Example: GET /api/clients - requires 'view' on clients
-app.get('/api/clients', requirePermission('clients', 'view'), (req, res) => {
-  res.json({ message: 'Phase 2: Returns clients from BigQuery', user: req.user.email });
-});
+  // CORS
+  app.use(
+    cors({
+      origin: process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000'],
+      credentials: true,
+    })
+  )
 
-// Example: POST /api/clients - requires 'edit' on clients
-app.post('/api/clients', requirePermission('clients', 'edit'), (req, res) => {
-  res.json({ message: 'Phase 2: Creates client in BigQuery' });
-});
+  app.use(express.json())
 
-// Example: DELETE /api/clients/:id - requires 'full' on clients
-app.delete('/api/clients/:id', requirePermission('clients', 'full'), (req, res) => {
-  res.json({ message: 'Phase 2: Deletes client in BigQuery' });
-});
+  // Rate limiting on all /api routes
+  app.use(
+    '/api/',
+    rateLimit({
+      windowMs: 15 * 60 * 1000, // 15 minutes
+      max: 100,
+      standardHeaders: true,
+      legacyHeaders: false,
+    })
+  )
 
-// Example: GET /api/sales - requires 'view' on sales
-app.get('/api/sales', requirePermission('sales', 'view'), (req, res) => {
-  res.json({ message: 'Phase 2: Returns sales pipeline from BigQuery', user: req.user.email });
-});
+  // Health check — no auth required
+  app.get('/health', (req, res) => {
+    res.json({ status: 'ok', project: process.env.GCP_PROJECT_ID || 'gen-lang-client-0453424159' })
+  })
 
-// Example: GET /api/production - requires 'view' on production
-app.get('/api/production', requirePermission('production', 'view'), (req, res) => {
-  res.json({ message: 'Phase 2: Returns production jobs from BigQuery', user: req.user.email });
-});
+  // Apply verifyToken to all /api routes EXCEPT /api/auth/verify
+  app.use('/api', (_req, _res, next) => {
+    if (_req.path === '/auth/verify') return next()
+    verifyToken(_req, _res, next)
+  })
 
-// Example: GET /api/users - requires 'full' on settings (admin only)
-app.get('/api/users', requirePermission('settings', 'full'), (req, res) => {
-  res.json({ message: 'Phase 2: Returns users from BigQuery', user: req.user.email });
-});
+  // Route handlers
+  app.use('/api/auth', require('./routes/auth'))
+  app.use('/api/users', require('./routes/users'))
+  app.use('/api/roles', require('./routes/roles'))
+  app.use('/api/clients', require('./routes/clients'))
+  app.use('/api/contacts', require('./routes/contacts'))
+  app.use('/api/sales', require('./routes/sales'))
+  app.use('/api/production', require('./routes/production'))
+  app.use('/api/inventory', require('./routes/inventory'))
+  app.use('/api/analytics', require('./routes/analytics'))
 
-app.listen(PORT, () => {
-  console.log(`CRM Server running on http://localhost:${PORT}`);
-});
+  // 404 fallback
+  app.use((_req, res) => {
+    res.status(404).json({ error: 'Not found' })
+  })
+
+  // Global error handler
+  app.use((err, _req, res, _next) => {
+    console.error('[server] Unhandled error:', err.message)
+    res.status(500).json({ error: 'Internal server error' })
+  })
+
+  app.listen(PORT, () => {
+    console.log(`MAllPrint CRM API running on port ${PORT}`)
+  })
+}
+
+startServer().catch((err) => {
+  console.error('Failed to start server:', err.message)
+  process.exit(1)
+})
