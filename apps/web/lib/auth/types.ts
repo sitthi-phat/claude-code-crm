@@ -48,6 +48,8 @@ export type Invitation = {
 
 export type Session = {
   user: AuthUser
-  loginAt: string  // ISO string
-  expiresAt: string  // 1 AM next occurrence
+  permissions: MenuPermissions
+  idToken?: string  // Google ID token for API calls
+  loginAt: string   // ISO string
+  expiresAt: string // 1 AM next occurrence
 }

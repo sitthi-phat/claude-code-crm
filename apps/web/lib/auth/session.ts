@@ -1,4 +1,4 @@
-import { AuthUser, Session } from './types'
+import { AuthUser, MenuPermissions, Session } from './types'
 
 // Session key in localStorage
 const SESSION_KEY = 'crm_session'
@@ -14,9 +14,11 @@ function getNext1AM(): string {
   return next1AM.toISOString()
 }
 
-export function saveSession(user: AuthUser): Session {
+export function saveSession(user: AuthUser, permissions: MenuPermissions, idToken?: string): Session {
   const session: Session = {
     user,
+    permissions,
+    idToken,
     loginAt: new Date().toISOString(),
     expiresAt: getNext1AM(),
   }
@@ -47,4 +49,8 @@ export function clearSession(): void {
 
 export function getCurrentUser(): AuthUser | null {
   return getSession()?.user ?? null
+}
+
+export function getAuthToken(): string | null {
+  return getSession()?.idToken ?? null
 }

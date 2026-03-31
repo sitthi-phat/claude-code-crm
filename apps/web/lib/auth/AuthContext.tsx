@@ -4,11 +4,13 @@ import { AuthUser, MenuPermissions } from './types'
 import { getSession, clearSession, saveSession } from './session'
 import { mockRoles, mockUsers } from '@/lib/mock-data/users'
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+
 type AuthContextType = {
   user: AuthUser | null
   permissions: MenuPermissions | null
   isLoading: boolean
-  loginWithGoogle: (email: string) => Promise<boolean>  // mock
+  loginWithGoogle: (idToken: string) => Promise<boolean>
   loginWithPassword: (email: string, password: string) => Promise<boolean>
   logout: () => void
 }
@@ -24,23 +26,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const session = getSession()
     if (session) {
       setUser(session.user)
-      const role = mockRoles.find(r => r.id === session.user.roleId)
-      if (role) setPermissions(role.permissions)
+      setPermissions(session.permissions)
     }
     setIsLoading(false)
   }, [])
 
-  const loginWithGoogle = async (email: string): Promise<boolean> => {
-    // Phase 2: replace with real Google OAuth + GCP Identity Platform
-    await new Promise(r => setTimeout(r, 800))
-    const mockUser = mockUsers.find(u => u.email === email && u.loginMethod === 'google' && u.status === 'active')
-    if (!mockUser) return false
-    const role = mockRoles.find(r => r.id === mockUser.roleId)
-    if (!role) return false
-    saveSession(mockUser)
-    setUser(mockUser)
-    setPermissions(role.permissions)
-    return true
+  const loginWithGoogle = async (idToken: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/api/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: idToken }),
+      })
+      if (!res.ok) return false
+      const { user: userData } = await res.json()
+
+      const authUser: AuthUser = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        avatar: userData.avatar || userData.name?.charAt(0) || '?',
+        roleId: userData.roleId,
+        roleName: userData.roleName,
+        status: 'active',
+        loginMethod: 'google',
+        lastLogin: null,
+        invitedBy: null,
+        createdAt: new Date().toISOString(),
+      }
+
+      saveSession(authUser, userData.permissions, idToken)
+      setUser(authUser)
+      setPermissions(userData.permissions)
+      return true
+    } catch (err) {
+      console.error('[loginWithGoogle]', err)
+      return false
+    }
   }
 
   const loginWithPassword = async (email: string, password: string): Promise<boolean> => {
@@ -50,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!adminUser) return false
       const role = mockRoles.find(r => r.id === adminUser.roleId)
       if (!role) return false
-      saveSession(adminUser)
+      saveSession(adminUser, role.permissions)
       setUser(adminUser)
       setPermissions(role.permissions)
       return true
