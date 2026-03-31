@@ -57,3 +57,6 @@ steps:
 images:
   - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/api:$COMMIT_SHA'
   - 'asia-east2-docker.pkg.dev/gen-lang-client-0453424159/mallprint-crm/web:$COMMIT_SHA'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
