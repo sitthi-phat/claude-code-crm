@@ -39,7 +39,7 @@ steps:
       - '--platform=managed'
       - '--service-account=mallprint-crm-api@gen-lang-client-0453424159.iam.gserviceaccount.com'
       - '--set-secrets=GOOGLE_CLIENT_ID=google-oauth-client-id:latest,GOOGLE_CLIENT_SECRET=google-oauth-client-secret:latest'
-      - '--set-env-vars=GCP_PROJECT_ID=gen-lang-client-0453424159,BQ_DATASET=mallprint_crm'
+      - '--set-env-vars=GCP_PROJECT_ID=gen-lang-client-0453424159,BQ_DATASET=mallprint_crm,ALLOWED_ORIGINS=https://mallprint-crm-web-sw5iailmyq-df.a.run.app'
       - '--allow-unauthenticated'
 
   # Deploy Web to Cloud Run
