@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { getSession } from "@/lib/auth/session";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -9,7 +10,9 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const [checked, setChecked] = useState(false);
 
   useEffect(() => {
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
+    // Use getSession() which handles 1 AM expiry check
+    const session = getSession();
+    const isLoggedIn = session !== null;
     const isLoginPage = pathname.startsWith("/login");
 
     if (!isLoggedIn && !isLoginPage) {

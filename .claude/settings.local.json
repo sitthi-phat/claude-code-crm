@@ -6,7 +6,17 @@
       "Bash(npx shadcn@latest init -d)",
       "Bash(npx shadcn@latest add card badge button table tabs select input dialog sheet --yes)",
       "Bash(npm install recharts lucide-react)",
-      "Bash(npm install)"
+      "Bash(npm install)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(cmd /c \"taskkill /F /IM node.exe\")",
+      "Bash(cmd /c \"taskkill /F /IM node.exe 2>&1\")",
+      "Bash(cmd /c taskkill /F /IM node.exe)",
+      "Bash(powershell -Command \"Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force; Write-Host ''Done''\")",
+      "Bash(powershell -ExecutionPolicy Bypass -File \"C:\\\\Users\\\\josukekung\\\\Project\\\\create-zip.ps1\")",
+      "Bash(npx next build)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\josukekung\\Project"
     ]
   }
 }

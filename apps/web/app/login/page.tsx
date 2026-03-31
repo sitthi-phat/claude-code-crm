@@ -3,36 +3,123 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Printer, Eye, EyeOff } from "lucide-react";
+import { Printer, Eye, EyeOff, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/lib/i18n/LanguageContext";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { mockUsers } from "@/lib/mock-data/users";
+
+const googleUsers = mockUsers.filter(u => u.loginMethod === 'google' && u.status === 'active')
+
+function GoogleAccountModal({
+  open,
+  onClose,
+  onSelect,
+  loading,
+}: {
+  open: boolean
+  onClose: () => void
+  onSelect: (email: string) => void
+  loading: boolean
+}) {
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
+          <svg viewBox="0 0 48 48" className="w-6 h-6 shrink-0">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.58-13.47-8.79l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <div>
+            <div className="font-semibold text-foreground text-sm">Choose an account</div>
+            <div className="text-xs text-muted-foreground">to continue to MAllPrint - CRM</div>
+          </div>
+        </div>
+        <div className="py-2">
+          {googleUsers.map(user => (
+            <button
+              key={user.email}
+              onClick={() => onSelect(user.email)}
+              disabled={loading}
+              className="w-full flex items-center gap-4 px-6 py-3 hover:bg-secondary/50 transition-colors text-left disabled:opacity-50"
+            >
+              <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center text-primary text-sm font-bold shrink-0">
+                {user.avatar.charAt(0)}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-foreground truncate">{user.name}</div>
+                <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+              </div>
+              {loading && (
+                <span className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin shrink-0" />
+              )}
+            </button>
+          ))}
+        </div>
+        <div className="px-6 py-4 border-t border-border">
+          <button
+            onClick={onClose}
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const { language, setLanguage, t } = useLanguage();
+  const { loginWithPassword, loginWithGoogle } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleModalOpen, setGoogleModalOpen] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [showDemoAccounts, setShowDemoAccounts] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    await new Promise(r => setTimeout(r, 600));
-
-    if (email === "admin@company.com" && password === "admin1234") {
-      localStorage.setItem("isLoggedIn", "true");
+    const success = await loginWithPassword(email, password);
+    if (success) {
       router.push("/");
     } else {
       setError(language === "th" ? "อีเมลหรือรหัสผ่านไม่ถูกต้อง" : "Invalid email or password.");
     }
     setLoading(false);
   };
+
+  const handleGoogleSelect = async (selectedEmail: string) => {
+    setGoogleLoading(true);
+    const success = await loginWithGoogle(selectedEmail);
+    setGoogleLoading(false);
+    if (success) {
+      setGoogleModalOpen(false);
+      router.push("/");
+    } else {
+      setGoogleModalOpen(false);
+      setError(language === "th" ? "ไม่พบบัญชีผู้ใช้งาน" : "Account not found or inactive.");
+    }
+  };
+
+  const allDemoUsers = mockUsers.map(u => ({
+    email: u.email,
+    name: u.name,
+    role: u.roleName,
+    method: u.loginMethod,
+    status: u.status,
+  }));
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-4">
@@ -74,6 +161,28 @@ export default function LoginPage() {
         {/* Card */}
         <div className="bg-card border border-border rounded-2xl p-6 shadow-lg">
           <h2 className="text-lg font-semibold text-foreground mb-6">{t("login")}</h2>
+
+          {/* Google Sign-In */}
+          <button
+            type="button"
+            onClick={() => setGoogleModalOpen(true)}
+            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 rounded-lg border border-border bg-white dark:bg-secondary hover:bg-gray-50 dark:hover:bg-secondary/80 transition-colors text-sm font-medium text-gray-700 dark:text-foreground shadow-sm mb-5"
+          >
+            <svg viewBox="0 0 48 48" className="w-5 h-5 shrink-0">
+              <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.08 17.74 9.5 24 9.5z"/>
+              <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+              <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+              <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-3.58-13.47-8.79l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+            </svg>
+            Continue with Google
+          </button>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground font-medium">— OR —</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
@@ -144,17 +253,68 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+
+          {/* Session expiry notice */}
+          <p className="text-xs text-muted-foreground text-center mt-4">
+            {language === "th" ? "เซสชันจะหมดอายุทุกวันเวลา 01:00 น." : "Session expires daily at 1:00 AM"}
+          </p>
         </div>
 
-        {/* Mock credentials hint */}
-        <div className="mt-4 p-3 bg-primary/5 border border-primary/20 rounded-xl text-center">
-          <p className="text-xs text-muted-foreground mb-1">
-            {language === "th" ? "ข้อมูลสำหรับทดสอบ" : "Demo credentials"}
-          </p>
-          <p className="text-xs font-mono text-foreground">admin@company.com</p>
-          <p className="text-xs font-mono text-foreground">admin1234</p>
+        {/* Demo accounts collapsible */}
+        <div className="mt-4 border border-border rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowDemoAccounts(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-card hover:bg-secondary/30 transition-colors text-sm font-medium text-muted-foreground"
+          >
+            <span>{language === "th" ? "บัญชีสำหรับทดสอบ" : "Demo accounts"}</span>
+            {showDemoAccounts ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+          {showDemoAccounts && (
+            <div className="bg-card border-t border-border divide-y divide-border">
+              {allDemoUsers.map(u => (
+                <div key={u.email} className="px-4 py-2.5 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-foreground truncate">{u.name}</div>
+                    <div className="text-xs font-mono text-muted-foreground truncate">{u.email}</div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                      u.method === 'google'
+                        ? 'bg-blue-500/10 text-blue-500'
+                        : 'bg-primary/10 text-primary'
+                    }`}>
+                      {u.method === 'google' ? 'Google' : 'Password'}
+                    </span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                      u.status === 'active'
+                        ? 'bg-emerald-500/10 text-emerald-500'
+                        : 'bg-amber-500/10 text-amber-500'
+                    }`}>
+                      {u.status}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{u.role}</span>
+                  </div>
+                </div>
+              ))}
+              <div className="px-4 py-2 bg-secondary/20">
+                <p className="text-xs text-muted-foreground">
+                  {language === "th"
+                    ? "รหัสผ่านสำหรับ admin: admin1234"
+                    : "Password login: admin@company.com / admin1234"}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
+
+      <GoogleAccountModal
+        open={googleModalOpen}
+        onClose={() => setGoogleModalOpen(false)}
+        onSelect={handleGoogleSelect}
+        loading={googleLoading}
+      />
     </div>
   );
 }
