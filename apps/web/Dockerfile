@@ -10,6 +10,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL=https://mallprint-crm-api-sw5iailmyq-df.a.run.app
+ARG NEXT_PUBLIC_GOOGLE_CLIENT_ID=909715233757-4mqmcnu8636b6uu16kep9ho9gb9qd0pa.apps.googleusercontent.com
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_GOOGLE_CLIENT_ID=$NEXT_PUBLIC_GOOGLE_CLIENT_ID
 RUN npm run build
 
 FROM base AS runner
