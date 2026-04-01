@@ -42,6 +42,7 @@ async function loadSecrets() {
   const secretMap = {
     GOOGLE_CLIENT_ID: 'google-oauth-client-id',
     GOOGLE_CLIENT_SECRET: 'google-oauth-client-secret',
+    GMAIL_APP_PASSWORD: 'gmail-app-password',
   }
 
   for (const [envKey, secretName] of Object.entries(secretMap)) {
