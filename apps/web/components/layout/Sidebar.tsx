@@ -115,8 +115,7 @@ export default function Sidebar() {
   };
 
   const handleLogout = () => {
-    logout();
-    router.push("/login");
+    logout(true);
   };
 
   // Build avatar initials color based on role

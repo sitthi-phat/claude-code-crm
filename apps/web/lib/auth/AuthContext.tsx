@@ -14,7 +14,7 @@ type AuthContextType = {
   isLoading: boolean
   loginWithGoogle: (idToken: string) => Promise<boolean>
   loginWithPassword: (email: string, password: string) => Promise<boolean>
-  logout: () => void
+  logout: (redirectToGoogle?: boolean) => void
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -91,13 +91,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return false
   }
 
-  const logout = () => {
+  const logout = (fullSignOut = false) => {
+    const email = getSession()?.user?.email
     clearSession()
     setUser(null)
     setPermissions(null)
-    // Prevent GIS from auto-signing the user back in silently
     if (typeof window !== 'undefined') {
-      (window as any).google?.accounts?.id?.disableAutoSelect()
+      const g = (window as any).google?.accounts?.id
+      g?.disableAutoSelect()
+      if (email) g?.revoke(email, () => {})
+    }
+    if (fullSignOut) {
+      // Sign out of Google entirely — forces password re-entry on shared devices
+      window.location.href = 'https://accounts.google.com/Logout'
+    } else {
+      window.location.href = '/login'
     }
   }
 
