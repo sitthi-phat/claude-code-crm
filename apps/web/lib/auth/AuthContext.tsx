@@ -95,6 +95,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearSession()
     setUser(null)
     setPermissions(null)
+    // Prevent GIS from auto-signing the user back in silently
+    if (typeof window !== 'undefined') {
+      (window as any).google?.accounts?.id?.disableAutoSelect()
+    }
   }
 
   return (

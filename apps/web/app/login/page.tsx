@@ -37,6 +37,7 @@ export default function LoginPage() {
     if (!window.google || !googleBtnRef.current) return;
     window.google.accounts.id.initialize({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID!,
+      auto_select: false,
       callback: async (response: { credential: string }) => {
         setLoading(true);
         setError("");
