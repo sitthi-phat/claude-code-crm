@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Settings,
   Plug,
@@ -32,12 +39,69 @@ import {
   Trash2,
   RotateCcw,
   AlertTriangle,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { mockRoles, mockUsers, mockInvitations } from "@/lib/mock-data/users";
-import { AuthUser, Invitation, Role, MenuPermissions, PermissionLevel } from "@/lib/auth/types";
+import { AuthUser, Invitation, Role, MenuPermissions, PermissionLevel, UserStatus } from "@/lib/auth/types";
 import { InviteUserModal } from "@/components/modals/InviteUserModal";
+import { apiFetch } from "@/lib/api";
+
+function toStr(val: unknown): string | null {
+  if (!val) return null
+  if (typeof val === 'string') return val
+  if (val instanceof Date) return val.toISOString()
+  if (typeof val === 'object' && val !== null && 'value' in val) return (val as { value: string }).value
+  return null
+}
+
+function mapUser(row: Record<string, unknown>): AuthUser {
+  return {
+    id: row.id as string,
+    email: row.email as string,
+    name: row.name as string,
+    avatar: (row.avatar as string) || (row.name as string)?.charAt(0) || '?',
+    roleId: row.role_id as string,
+    roleName: row.role_name as string,
+    status: row.status as UserStatus,
+    loginMethod: row.login_method as 'google' | 'password',
+    lastLogin: toStr(row.last_login),
+    invitedBy: (row.invited_by as string) || null,
+    createdAt: toStr(row.created_at) || new Date().toISOString(),
+  }
+}
+
+function mapRole(row: Record<string, unknown>): Role {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    description: (row.description as string) || '',
+    isSystem: Boolean(row.is_system),
+    permissions: {
+      dashboard: (row.perm_dashboard as PermissionLevel) || 'none',
+      clients: (row.perm_clients as PermissionLevel) || 'none',
+      sales: (row.perm_sales as PermissionLevel) || 'none',
+      production: (row.perm_production as PermissionLevel) || 'none',
+      inventory: (row.perm_inventory as PermissionLevel) || 'none',
+      automation: (row.perm_automation as PermissionLevel) || 'none',
+      settings: (row.perm_settings as PermissionLevel) || 'none',
+    },
+    createdAt: toStr(row.created_at) || new Date().toISOString(),
+  }
+}
+
+function mapInvitation(row: Record<string, unknown>): Invitation {
+  return {
+    id: row.id as string,
+    email: row.email as string,
+    roleId: row.role_id as string,
+    roleName: row.role_name as string,
+    invitedBy: row.invited_by as string,
+    invitedAt: toStr(row.invited_at) || new Date().toISOString(),
+    status: row.status as 'pending' | 'accepted' | 'expired',
+    token: row.token as string,
+  }
+}
 
 // ----------------------------------------------------------
 // Local state helpers
@@ -129,28 +193,49 @@ function ConfirmDialog({
 
 function UsersTab({
   users,
+  roles,
   currentUserId,
+  canEdit,
   onDisable,
   onEnable,
   onDelete,
   onResendInvite,
   onCancelInvite,
   onInvite,
+  onEditRole,
 }: {
   users: AuthUser[];
+  roles: Role[];
   currentUserId: string;
+  canEdit: boolean;
   onDisable: (id: string) => void;
   onEnable: (id: string) => void;
   onDelete: (id: string) => void;
   onResendInvite: (id: string) => void;
   onCancelInvite: (id: string) => void;
   onInvite: () => void;
+  onEditRole: (id: string, roleId: string, roleName: string) => void;
 }) {
   const [confirmAction, setConfirmAction] = useState<{
     type: 'disable' | 'enable' | 'delete' | 'cancelInvite';
     userId: string;
     userName: string;
   } | null>(null);
+
+  const [editingUser, setEditingUser] = useState<{ id: string; roleId: string } | null>(null);
+  const [editRoleId, setEditRoleId] = useState('');
+
+  const startEditRole = (u: AuthUser) => {
+    setEditingUser({ id: u.id, roleId: u.roleId });
+    setEditRoleId(u.roleId);
+  };
+
+  const handleSaveRole = () => {
+    if (!editingUser) return;
+    const role = roles.find(r => r.id === editRoleId);
+    if (role) onEditRole(editingUser.id, role.id, role.name);
+    setEditingUser(null);
+  };
 
   const handleConfirm = () => {
     if (!confirmAction) return;
@@ -240,6 +325,17 @@ function UsersTab({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 justify-end">
+                        {canEdit && !isSelf && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => startEditRole(u)}
+                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="w-3.5 h-3.5 mr-1" />
+                            Edit Role
+                          </Button>
+                        )}
                         {u.status === 'active' && (
                           <>
                             <Button
@@ -327,6 +423,46 @@ function UsersTab({
         </div>
       </Card>
 
+      {/* Edit Role Dialog */}
+      {editingUser && (
+        <Dialog open={true} onOpenChange={v => { if (!v) setEditingUser(null); }}>
+          <DialogContent className="bg-card border-border max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-foreground">
+                <Pencil className="w-4 h-4 text-primary" />
+                Edit User Role
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium text-foreground">Role</label>
+                <Select value={editRoleId} onValueChange={setEditRoleId}>
+                  <SelectTrigger className="bg-secondary border-border">
+                    <SelectValue placeholder="Select role..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border">
+                    {roles.map(r => (
+                      <SelectItem key={r.id} value={r.id}>
+                        <div className="flex items-center gap-2">
+                          <span>{r.name}</span>
+                          {r.isSystem && <span className="text-xs text-muted-foreground">(system)</span>}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setEditingUser(null)} className="border-border">Cancel</Button>
+                <Button onClick={handleSaveRole} disabled={!editRoleId || editRoleId === editingUser.roleId}>
+                  Save
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {confirmAction && (
         <ConfirmDialog
           open={true}
@@ -384,6 +520,12 @@ function RolesTab({
   const [selectedRoleId, setSelectedRoleId] = useState<string>(roles[0]?.id ?? '');
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+
+  useEffect(() => {
+    if (!selectedRoleId && roles.length > 0) {
+      setSelectedRoleId(roles[0].id);
+    }
+  }, [roles, selectedRoleId]);
 
   const selectedRole = roles.find(r => r.id === selectedRoleId) ?? null;
 
@@ -707,89 +849,149 @@ const integrations = [
 // ----------------------------------------------------------
 
 export default function SettingsPage() {
-  const { user } = useAuth();
+  const { user, permissions } = useAuth();
 
-  // Local state for users, roles, invitations
-  const [users, setUsers] = useState<AuthUser[]>(mockUsers);
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
-  const [invitations, setInvitations] = useState<Invitation[]>(mockInvitations);
+  const [users, setUsers] = useState<AuthUser[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; isError?: boolean } | null>(null);
 
-  const showToast = (msg: string) => {
-    setToast(msg);
+  const showToast = (msg: string, isError = false) => {
+    setToast({ msg, isError });
     setTimeout(() => setToast(null), 3000);
   };
 
+  // Load all data on mount
+  useEffect(() => {
+    Promise.all([
+      apiFetch('/api/users').then(r => r.json()),
+      apiFetch('/api/roles').then(r => r.json()),
+      apiFetch('/api/users/invitations').then(r => r.json()),
+    ]).then(([usersData, rolesData, invData]) => {
+      if (usersData.users) setUsers(usersData.users.map(mapUser));
+      if (rolesData.roles) setRoles(rolesData.roles.map(mapRole));
+      if (invData.invitations) setInvitations(invData.invitations.map(mapInvitation));
+    }).catch(err => {
+      console.error('[settings] Failed to load data:', err);
+      showToast('Failed to load data. Please refresh.', true);
+    });
+  }, []);
+
   // User actions
-  const handleDisable = (id: string) => {
+  const handleDisable = async (id: string) => {
+    const res = await apiFetch(`/api/users/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'disabled' }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast((d as {error?:string}).error || 'Failed to disable user.', true); return; }
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'disabled' as const } : u));
     showToast('User disabled.');
   };
-  const handleEnable = (id: string) => {
+
+  const handleEnable = async (id: string) => {
+    const res = await apiFetch(`/api/users/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'active' }),
+    });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast((d as {error?:string}).error || 'Failed to enable user.', true); return; }
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'active' as const } : u));
     showToast('User enabled.');
   };
-  const handleDeleteUser = (id: string) => {
+
+  const handleDeleteUser = async (id: string) => {
+    const res = await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+    if (!res.ok) { const d = await res.json().catch(() => ({})); showToast((d as {error?:string}).error || 'Failed to delete user.', true); return; }
     setUsers(prev => prev.filter(u => u.id !== id));
     showToast('User deleted.');
   };
-  const handleResendInvite = (id: string) => {
+
+  const handleResendInvite = (_id: string) => {
     showToast('Invitation resent.');
   };
-  const handleCancelInvite = (id: string) => {
+
+  const handleEditRole = async (id: string, roleId: string, roleName: string) => {
+    const res = await apiFetch(`/api/users/${id}/role`, {
+      method: 'PATCH',
+      body: JSON.stringify({ role_id: roleId, role_name: roleName }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      showToast((data as { error?: string }).error || 'Failed to update role.', true);
+      return;
+    }
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, roleId, roleName } : u));
+    showToast('User role updated.');
+  };
+
+  const handleCancelInvite = async (id: string) => {
+    const res = await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('Failed to cancel invitation.', true); return; }
     setUsers(prev => prev.filter(u => u.id !== id));
     showToast('Invitation cancelled.');
   };
 
   // Role actions
-  const handleSaveRole = (updated: Role) => {
+  const handleSaveRole = async (updated: Role) => {
+    const res = await apiFetch(`/api/roles/${updated.id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: updated.name,
+        description: updated.description,
+        perm_dashboard: updated.permissions.dashboard,
+        perm_clients: updated.permissions.clients,
+        perm_sales: updated.permissions.sales,
+        perm_production: updated.permissions.production,
+        perm_inventory: updated.permissions.inventory,
+        perm_automation: updated.permissions.automation,
+        perm_settings: updated.permissions.settings,
+      }),
+    });
+    if (!res.ok) { showToast('Failed to save role.', true); return; }
     setRoles(prev => prev.map(r => r.id === updated.id ? updated : r));
     showToast('Role saved.');
   };
-  const handleDeleteRole = (roleId: string) => {
+
+  const handleDeleteRole = async (roleId: string) => {
+    const res = await apiFetch(`/api/roles/${roleId}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('Failed to delete role.', true); return; }
     setRoles(prev => prev.filter(r => r.id !== roleId));
     showToast('Role deleted.');
   };
-  const handleCreateRole = () => {
-    const newRole: Role = {
-      id: `role-custom-${Date.now()}`,
-      name: 'New Role',
-      description: 'Custom role',
-      permissions: {
-        dashboard: 'none',
-        clients: 'none',
-        sales: 'none',
-        production: 'none',
-        inventory: 'none',
-        automation: 'none',
-        settings: 'none',
-      },
-      isSystem: false,
-      createdAt: new Date().toISOString(),
-    };
-    setRoles(prev => [...prev, newRole]);
+
+  const handleCreateRole = async () => {
+    const res = await apiFetch('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'New Role',
+        description: 'Custom role',
+        perm_dashboard: 'none',
+        perm_clients: 'none',
+        perm_sales: 'none',
+        perm_production: 'none',
+        perm_inventory: 'none',
+        perm_automation: 'none',
+        perm_settings: 'none',
+      }),
+    });
+    if (!res.ok) { showToast('Failed to create role.', true); return; }
+    const { role } = await res.json();
+    setRoles(prev => [...prev, mapRole(role)]);
     showToast('New role created. Click Edit Role to configure permissions.');
   };
 
   // Invitation actions
-  const handleInvited = (email: string, roleId: string, roleName: string, message: string) => {
-    const newInv: Invitation = {
-      id: `inv-${Date.now()}`,
-      email,
-      roleId,
-      roleName,
-      invitedBy: user?.email ?? 'admin@company.com',
-      invitedAt: new Date().toISOString(),
-      status: 'pending',
-      token: `mock-token-${Date.now()}`,
-    };
-    setInvitations(prev => [newInv, ...prev]);
+  const handleInvited = (invitation: Invitation) => {
+    setInvitations(prev => [invitation, ...prev]);
   };
-  const handleResendInvitation = (id: string) => {
+
+  const handleResendInvitation = (_id: string) => {
     showToast('Invitation resent.');
   };
-  const handleCancelInvitation = (id: string) => {
+
+  const handleCancelInvitation = async (id: string) => {
+    const res = await apiFetch(`/api/users/invitations/${id}/cancel`, { method: 'PATCH' });
+    if (!res.ok) { showToast('Failed to cancel invitation.', true); return; }
     setInvitations(prev => prev.map(inv => inv.id === id ? { ...inv, status: 'expired' as const } : inv));
     showToast('Invitation cancelled.');
   };
@@ -798,9 +1000,17 @@ export default function SettingsPage() {
     <div className="p-6 space-y-6">
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 bg-card border border-border rounded-lg px-4 py-2.5 shadow-lg text-sm text-foreground flex items-center gap-2">
-          <Check className="w-4 h-4 text-emerald-500" />
-          {toast}
+        <div className={cn(
+          "fixed bottom-6 right-6 z-50 border rounded-lg px-4 py-2.5 shadow-lg text-sm flex items-center gap-2",
+          toast.isError
+            ? "bg-card border-destructive/30 text-destructive"
+            : "bg-card border-border text-foreground"
+        )}>
+          {toast.isError
+            ? <AlertTriangle className="w-4 h-4 text-destructive" />
+            : <Check className="w-4 h-4 text-emerald-500" />
+          }
+          {toast.msg}
         </div>
       )}
 
@@ -838,13 +1048,16 @@ export default function SettingsPage() {
             <TabsContent value="users-list">
               <UsersTab
                 users={users}
+                roles={roles}
                 currentUserId={user?.id ?? ''}
+                canEdit={['edit', 'full'].includes(permissions?.settings ?? '')}
                 onDisable={handleDisable}
                 onEnable={handleEnable}
                 onDelete={handleDeleteUser}
                 onResendInvite={handleResendInvite}
                 onCancelInvite={handleCancelInvite}
                 onInvite={() => setInviteModalOpen(true)}
+                onEditRole={handleEditRole}
               />
             </TabsContent>
 
@@ -960,6 +1173,7 @@ export default function SettingsPage() {
         open={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
         onInvited={handleInvited}
+        roles={roles}
       />
     </div>
   );

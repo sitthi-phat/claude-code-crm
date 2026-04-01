@@ -1,9 +1,8 @@
 'use strict'
 
 const { OAuth2Client } = require('google-auth-library')
-const { bigquery, PROJECT_ID } = require('../lib/bigquery')
+const { db } = require('../lib/firestore')
 
-const DATASET = process.env.BQ_DATASET || 'mallprint_crm'
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID)
 
 const verifyToken = async (req, res, next) => {
@@ -15,7 +14,6 @@ const verifyToken = async (req, res, next) => {
   const token = authHeader.split(' ')[1]
 
   try {
-    // Verify Google ID token against the configured OAuth2 client ID
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
@@ -23,23 +21,32 @@ const verifyToken = async (req, res, next) => {
     const payload = ticket.getPayload()
     const email = payload.email
 
-    // Look up the user and their role permissions in BigQuery
-    const query = `
-      SELECT u.id, u.email, u.name, u.avatar, u.role_id, u.role_name, u.status,
-             r.perm_dashboard, r.perm_clients, r.perm_sales,
-             r.perm_production, r.perm_inventory, r.perm_automation, r.perm_settings
-      FROM \`${PROJECT_ID}.${DATASET}.users\` u
-      JOIN \`${PROJECT_ID}.${DATASET}.roles\` r ON u.role_id = r.id
-      WHERE u.email = @email AND u.status = 'active'
-      LIMIT 1
-    `
-    const [rows] = await bigquery.query({ query, params: { email } })
+    // Look up user in Firestore (query by email only to avoid composite index requirement)
+    const usersSnap = await db.collection('users')
+      .where('email', '==', email)
+      .limit(1)
+      .get()
 
-    if (!rows.length) {
+    if (usersSnap.empty) {
       return res.status(401).json({ error: 'Unauthorized: User not found or inactive' })
     }
 
-    const user = rows[0]
+    const userDoc = usersSnap.docs[0]
+    const userData = userDoc.data()
+
+    if (userData.status !== 'active') {
+      return res.status(401).json({ error: 'Unauthorized: User not found or inactive' })
+    }
+
+    if (userData.force_logout) {
+      return res.status(401).json({ error: 'Session invalidated', code: 'SESSION_INVALIDATED' })
+    }
+    const user = { id: userDoc.id, ...userData }
+
+    // Get role permissions
+    const roleDoc = await db.collection('roles').doc(user.role_id).get()
+    const role = roleDoc.exists ? roleDoc.data() : {}
+
     req.user = {
       id: user.id,
       email: user.email,
@@ -48,25 +55,19 @@ const verifyToken = async (req, res, next) => {
       roleId: user.role_id,
       roleName: user.role_name,
       permissions: {
-        dashboard: user.perm_dashboard,
-        clients: user.perm_clients,
-        sales: user.perm_sales,
-        production: user.perm_production,
-        inventory: user.perm_inventory,
-        automation: user.perm_automation,
-        settings: user.perm_settings,
+        dashboard: role.perm_dashboard || 'none',
+        clients: role.perm_clients || 'none',
+        sales: role.perm_sales || 'none',
+        production: role.perm_production || 'none',
+        inventory: role.perm_inventory || 'none',
+        automation: role.perm_automation || 'none',
+        settings: role.perm_settings || 'none',
       },
     }
 
-    // Update last_login asynchronously — do not block the request
-    bigquery
-      .query({
-        query: `UPDATE \`${PROJECT_ID}.${DATASET}.users\`
-                SET last_login = CURRENT_TIMESTAMP(), updated_at = CURRENT_TIMESTAMP()
-                WHERE email = @email`,
-        params: { email },
-      })
-      .catch((err) => console.error('[auth] Failed to update last_login:', err.message))
+    // Update last_login asynchronously
+    userDoc.ref.update({ last_login: new Date(), updated_at: new Date() })
+      .catch(err => console.error('[auth] Failed to update last_login:', err.message))
 
     next()
   } catch (err) {

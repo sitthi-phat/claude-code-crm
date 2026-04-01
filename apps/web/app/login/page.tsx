@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { Printer } from "lucide-react";
@@ -28,6 +28,10 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const googleBtnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (window.google) initGoogleSignIn();
+  });
 
   const initGoogleSignIn = () => {
     if (!window.google || !googleBtnRef.current) return;

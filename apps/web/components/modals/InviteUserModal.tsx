@@ -6,23 +6,24 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Mail, UserPlus, Check } from "lucide-react"
-import { mockRoles } from "@/lib/mock-data/users"
-import { useAuth } from "@/lib/auth/AuthContext"
+import { Role, Invitation } from "@/lib/auth/types"
+import { apiFetch } from "@/lib/api"
 
 type Props = {
   open: boolean
   onClose: () => void
-  onInvited: (email: string, roleId: string, roleName: string, message: string) => void
+  onInvited: (invitation: Invitation) => void
+  roles: Role[]
 }
 
-export function InviteUserModal({ open, onClose, onInvited }: Props) {
-  const { user } = useAuth()
+export function InviteUserModal({ open, onClose, onInvited, roles }: Props) {
   const [email, setEmail] = useState("")
   const [roleId, setRoleId] = useState("")
   const [message, setMessage] = useState("")
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [emailError, setEmailError] = useState("")
+  const [submitError, setSubmitError] = useState("")
 
   const validateEmail = (val: string) => {
     if (!val) return "Email is required"
@@ -36,13 +37,39 @@ export function InviteUserModal({ open, onClose, onInvited }: Props) {
     if (err) { setEmailError(err); return }
     if (!roleId) return
 
-    setLoading(true)
-    await new Promise(r => setTimeout(r, 800))
+    const selectedRole = roles.find(r => r.id === roleId)
+    if (!selectedRole) return
 
-    const role = mockRoles.find(r => r.id === roleId)
-    if (role) {
-      onInvited(email, roleId, role.name, message)
+    setLoading(true)
+    setSubmitError("")
+    try {
+      const res = await apiFetch('/api/users/invite', {
+        method: 'POST',
+        body: JSON.stringify({ email, role_id: roleId, role_name: selectedRole.name }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setSubmitError((data as { error?: string }).error || 'Failed to send invitation. Please try again.')
+        setLoading(false)
+        return
+      }
+
+      const data = await res.json()
+      const inv = data.invitation
+      onInvited({
+        id: inv.id,
+        email: inv.email,
+        roleId: inv.role_id,
+        roleName: inv.role_name,
+        invitedBy: inv.invited_by,
+        invitedAt: inv.invited_at,
+        status: inv.status,
+        token: inv.token,
+      })
       setSuccess(true)
+    } catch {
+      setSubmitError('Failed to send invitation. Please try again.')
     }
     setLoading(false)
   }
@@ -52,11 +79,12 @@ export function InviteUserModal({ open, onClose, onInvited }: Props) {
     setRoleId("")
     setMessage("")
     setEmailError("")
+    setSubmitError("")
     setSuccess(false)
     onClose()
   }
 
-  const selectedRole = mockRoles.find(r => r.id === roleId)
+  const selectedRole = roles.find(r => r.id === roleId)
 
   return (
     <Dialog open={open} onOpenChange={v => { if (!v) handleClose() }}>
@@ -109,7 +137,7 @@ export function InviteUserModal({ open, onClose, onInvited }: Props) {
                   <SelectValue placeholder="Select a role..." />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {mockRoles.map(role => (
+                  {roles.map(role => (
                     <SelectItem key={role.id} value={role.id}>
                       <div className="flex items-center gap-2">
                         <span>{role.name}</span>
@@ -139,6 +167,10 @@ export function InviteUserModal({ open, onClose, onInvited }: Props) {
                 className="w-full px-3 py-2 text-sm bg-secondary border border-border rounded-md text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
+
+            {submitError && (
+              <p className="text-xs text-destructive">{submitError}</p>
+            )}
 
             <div className="flex items-center gap-2 pt-1">
               <Button type="submit" disabled={loading || !roleId} className="flex-1">
