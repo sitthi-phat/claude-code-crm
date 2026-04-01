@@ -436,7 +436,7 @@ function UsersTab({
             <div className="space-y-4 mt-2">
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-foreground">Role</label>
-                <Select value={editRoleId} onValueChange={setEditRoleId}>
+                <Select value={editRoleId} onValueChange={(v) => setEditRoleId(v ?? '')}>
                   <SelectTrigger className="bg-secondary border-border">
                     <SelectValue placeholder="Select role..." />
                   </SelectTrigger>
