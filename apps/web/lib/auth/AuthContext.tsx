@@ -3,8 +3,10 @@ import React, { createContext, useContext, useState, useEffect } from 'react'
 import { AuthUser, MenuPermissions } from './types'
 import { getSession, clearSession, saveSession } from './session'
 import { mockRoles, mockUsers } from '@/lib/mock-data/users'
+import { apiFetch } from '@/lib/api'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const POLL_INTERVAL_MS = 60 * 1000 // check every 60 seconds
 
 type AuthContextType = {
   user: AuthUser | null
@@ -29,6 +31,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setPermissions(session.permissions)
     }
     setIsLoading(false)
+  }, [])
+
+  // Poll /api/auth/me to detect deleted/disabled accounts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (!getSession()) return
+      apiFetch('/api/auth/me').catch(() => {})
+    }, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
   }, [])
 
   const loginWithGoogle = async (idToken: string): Promise<boolean> => {

@@ -88,6 +88,11 @@ router.post('/verify', async (req, res) => {
       .limit(1)
       .get()
 
+    console.log('[auth/verify] Invitations found for', email, ':', invSnap.size)
+    if (!invSnap.empty) {
+      console.log('[auth/verify] Invitation status:', invSnap.docs[0].data().status)
+    }
+
     const pendingInv = invSnap.docs.find(d => d.data().status === 'pending')
     if (!pendingInv) {
       return res.status(401).json({ error: 'User not found or inactive' })
