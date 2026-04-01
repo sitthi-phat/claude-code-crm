@@ -8,8 +8,8 @@ const { sendInvitationEmail } = require('../lib/mailer')
 
 const router = Router()
 
-// GET /api/users — list all users (requires settings full)
-router.get('/', requirePermission('settings', 'full'), async (req, res) => {
+// GET /api/users — list all users (requires settings view)
+router.get('/', requirePermission('settings', 'view'), async (req, res) => {
   try {
     const snap = await db.collection('users').orderBy('created_at', 'desc').get()
     const users = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -20,8 +20,8 @@ router.get('/', requirePermission('settings', 'full'), async (req, res) => {
   }
 })
 
-// GET /api/users/invitations — list all invitations
-router.get('/invitations', requirePermission('settings', 'full'), async (req, res) => {
+// GET /api/users/invitations — list all invitations (requires settings view)
+router.get('/invitations', requirePermission('settings', 'view'), async (req, res) => {
   try {
     const snap = await db.collection('invitations').orderBy('invited_at', 'desc').get()
     const invitations = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
@@ -32,8 +32,8 @@ router.get('/invitations', requirePermission('settings', 'full'), async (req, re
   }
 })
 
-// POST /api/users/invite — create invitation record (requires settings full)
-router.post('/invite', requirePermission('settings', 'full'), async (req, res) => {
+// POST /api/users/invite — create invitation (requires settings edit)
+router.post('/invite', requirePermission('settings', 'edit'), async (req, res) => {
   const { email, role_id, role_name } = req.body
   if (!email || !role_id || !role_name) {
     return res.status(400).json({ error: 'email, role_id, and role_name are required' })
@@ -56,7 +56,6 @@ router.post('/invite', requirePermission('settings', 'full'), async (req, res) =
 
     await db.collection('invitations').doc(id).set(invData)
 
-    // Send invitation email (non-blocking)
     if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
       const appUrl = process.env.APP_URL || 'http://localhost:3000'
       sendInvitationEmail({
@@ -76,8 +75,34 @@ router.post('/invite', requirePermission('settings', 'full'), async (req, res) =
   }
 })
 
-// PATCH /api/users/invitations/:id/cancel — cancel a pending invitation
-router.patch('/invitations/:id/cancel', requirePermission('settings', 'full'), async (req, res) => {
+// POST /api/users/invitations/:id/resend — resend invitation email (requires settings edit)
+router.post('/invitations/:id/resend', requirePermission('settings', 'edit'), async (req, res) => {
+  try {
+    const invDoc = await db.collection('invitations').doc(req.params.id).get()
+    if (!invDoc.exists) return res.status(404).json({ error: 'Invitation not found' })
+
+    const inv = invDoc.data()
+    if (inv.status !== 'pending') return res.status(400).json({ error: 'Invitation is no longer pending' })
+
+    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+      const appUrl = process.env.APP_URL || 'http://localhost:3000'
+      await sendInvitationEmail({
+        to: inv.email,
+        invitedBy: req.user.email,
+        roleName: inv.role_name,
+        appUrl,
+      })
+    }
+
+    res.json({ message: 'Invitation resent' })
+  } catch (err) {
+    console.error('[users] POST /invitations/:id/resend error:', err.message)
+    res.status(500).json({ error: 'Failed to resend invitation' })
+  }
+})
+
+// PATCH /api/users/invitations/:id/cancel — cancel invitation (requires settings delete)
+router.patch('/invitations/:id/cancel', requirePermission('settings', 'delete'), async (req, res) => {
   try {
     await db.collection('invitations').doc(req.params.id).update({ status: 'expired' })
     res.json({ message: 'Invitation cancelled' })
@@ -87,13 +112,13 @@ router.patch('/invitations/:id/cancel', requirePermission('settings', 'full'), a
   }
 })
 
-// PATCH /api/users/:id/status — enable or disable a user (requires settings full)
-router.patch('/:id/status', requirePermission('settings', 'full'), async (req, res) => {
+// PATCH /api/users/:id/status — enable or disable a user (requires settings edit)
+router.patch('/:id/status', requirePermission('settings', 'edit'), async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
-  if (!['active', 'disabled', 'pending'].includes(status)) {
-    return res.status(400).json({ error: "status must be 'active', 'disabled', or 'pending'" })
+  if (!['active', 'disabled'].includes(status)) {
+    return res.status(400).json({ error: "status must be 'active' or 'disabled'" })
   }
 
   try {
@@ -121,8 +146,8 @@ router.patch('/:id/role', requirePermission('settings', 'edit'), async (req, res
   }
 })
 
-// DELETE /api/users/:id — delete user (requires settings full)
-router.delete('/:id', requirePermission('settings', 'full'), async (req, res) => {
+// DELETE /api/users/:id — soft-delete user (requires settings delete)
+router.delete('/:id', requirePermission('settings', 'delete'), async (req, res) => {
   const { id } = req.params
 
   if (id === req.user.id) {
@@ -130,7 +155,13 @@ router.delete('/:id', requirePermission('settings', 'full'), async (req, res) =>
   }
 
   try {
-    await db.collection('users').doc(id).delete()
+    // Soft-delete: set deleted flag + force logout, keep document
+    await db.collection('users').doc(id).update({
+      deleted: true,
+      status: 'disabled',
+      force_logout: true,
+      updated_at: new Date(),
+    })
     res.json({ message: 'User deleted' })
   } catch (err) {
     console.error('[users] DELETE /:id error:', err.message)

@@ -1,4 +1,4 @@
-export type PermissionLevel = 'none' | 'view' | 'edit' | 'full'
+export type PermissionLevel = 'none' | 'view' | 'edit' | 'delete'
 
 export type MenuPermissions = {
   dashboard: PermissionLevel
@@ -19,7 +19,7 @@ export type Role = {
   createdAt: string
 }
 
-export type UserStatus = 'active' | 'pending' | 'disabled'
+export type UserStatus = 'active' | 'pending' | 'disabled' | 'deleted'
 
 export type AuthUser = {
   id: string

@@ -107,7 +107,7 @@ function mapInvitation(row: Record<string, unknown>): Invitation {
 // Local state helpers
 // ----------------------------------------------------------
 
-const PERM_LEVELS: PermissionLevel[] = ['none', 'view', 'edit', 'full'];
+const PERM_LEVELS: PermissionLevel[] = ['none', 'view', 'edit', 'delete'];
 const MENU_SECTIONS: { key: keyof MenuPermissions; label: string }[] = [
   { key: 'dashboard', label: 'Dashboard' },
   { key: 'clients', label: 'Clients & Contacts' },
@@ -122,13 +122,14 @@ const PERM_COLORS: Record<PermissionLevel, string> = {
   none: 'bg-slate-400/10 text-slate-400',
   view: 'bg-blue-400/10 text-blue-400',
   edit: 'bg-amber-400/10 text-amber-400',
-  full: 'bg-emerald-400/10 text-emerald-400',
+  delete: 'bg-emerald-400/10 text-emerald-400',
 };
 
 const STATUS_COLORS: Record<string, string> = {
   active: 'bg-emerald-400/10 text-emerald-400',
   pending: 'bg-amber-400/10 text-amber-400',
   disabled: 'bg-slate-400/10 text-slate-400',
+  deleted: 'bg-red-400/10 text-red-400',
 };
 
 const INVITATION_STATUS_COLORS: Record<string, string> = {
@@ -195,24 +196,20 @@ function UsersTab({
   users,
   roles,
   currentUserId,
-  canEdit,
+  permLevel,
   onDisable,
   onEnable,
   onDelete,
-  onResendInvite,
-  onCancelInvite,
   onInvite,
   onEditRole,
 }: {
   users: AuthUser[];
   roles: Role[];
   currentUserId: string;
-  canEdit: boolean;
+  permLevel: PermissionLevel;
   onDisable: (id: string) => void;
   onEnable: (id: string) => void;
   onDelete: (id: string) => void;
-  onResendInvite: (id: string) => void;
-  onCancelInvite: (id: string) => void;
   onInvite: () => void;
   onEditRole: (id: string, roleId: string, roleName: string) => void;
 }) {
@@ -243,7 +240,7 @@ function UsersTab({
       case 'disable': onDisable(confirmAction.userId); break;
       case 'enable': onEnable(confirmAction.userId); break;
       case 'delete': onDelete(confirmAction.userId); break;
-      case 'cancelInvite': onCancelInvite(confirmAction.userId); break;
+      case 'cancelInvite': break;
     }
     setConfirmAction(null);
   };
@@ -252,10 +249,12 @@ function UsersTab({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">{users.length} users total</div>
-        <Button onClick={onInvite} className="gap-2">
-          <UserPlus className="w-4 h-4" />
-          Invite User
-        </Button>
+        {['edit', 'delete'].includes(permLevel) && (
+          <Button onClick={onInvite} className="gap-2">
+            <UserPlus className="w-4 h-4" />
+            Invite User
+          </Button>
+        )}
       </div>
 
       <Card className="bg-card border-border overflow-hidden">
@@ -325,7 +324,7 @@ function UsersTab({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1.5 justify-end">
-                        {canEdit && !isSelf && (
+                        {['edit', 'delete'].includes(permLevel) && !isSelf && u.status !== 'deleted' && (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -336,82 +335,51 @@ function UsersTab({
                             Edit Role
                           </Button>
                         )}
-                        {u.status === 'active' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={isSelf}
-                              onClick={() => setConfirmAction({ type: 'disable', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-amber-500 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30"
-                            >
-                              <UserX className="w-3.5 h-3.5 mr-1" />
-                              Disable
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={isSelf}
-                              onClick={() => setConfirmAction({ type: 'delete', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-red-400 hover:text-red-400 hover:bg-red-400/10 disabled:opacity-30"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-1" />
-                              Delete
-                            </Button>
-                          </>
+                        {u.status === 'active' && ['edit', 'delete'].includes(permLevel) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSelf}
+                            onClick={() => setConfirmAction({ type: 'disable', userId: u.id, userName: u.name })}
+                            className="h-7 px-2 text-xs text-amber-500 hover:text-amber-500 hover:bg-amber-500/10 disabled:opacity-30"
+                          >
+                            <UserX className="w-3.5 h-3.5 mr-1" />
+                            Disable
+                          </Button>
                         )}
-                        {u.status === 'pending' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onResendInvite(u.id)}
-                              className="h-7 px-2 text-xs text-blue-400 hover:text-blue-400 hover:bg-blue-400/10"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                              Resend
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmAction({ type: 'cancelInvite', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                            >
-                              <X className="w-3.5 h-3.5 mr-1" />
-                              Cancel
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmAction({ type: 'delete', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-red-400 hover:text-red-400 hover:bg-red-400/10"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-1" />
-                              Delete
-                            </Button>
-                          </>
+                        {u.status === 'active' && permLevel === 'delete' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSelf}
+                            onClick={() => setConfirmAction({ type: 'delete', userId: u.id, userName: u.name })}
+                            className="h-7 px-2 text-xs text-red-400 hover:text-red-400 hover:bg-red-400/10 disabled:opacity-30"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            Delete
+                          </Button>
                         )}
-                        {u.status === 'disabled' && (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmAction({ type: 'enable', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10"
-                            >
-                              <UserCheck className="w-3.5 h-3.5 mr-1" />
-                              Enable
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setConfirmAction({ type: 'delete', userId: u.id, userName: u.name })}
-                              className="h-7 px-2 text-xs text-red-400 hover:text-red-400 hover:bg-red-400/10"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 mr-1" />
-                              Delete
-                            </Button>
-                          </>
+                        {u.status === 'disabled' && ['edit', 'delete'].includes(permLevel) && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmAction({ type: 'enable', userId: u.id, userName: u.name })}
+                            className="h-7 px-2 text-xs text-emerald-500 hover:text-emerald-500 hover:bg-emerald-500/10"
+                          >
+                            <UserCheck className="w-3.5 h-3.5 mr-1" />
+                            Enable
+                          </Button>
+                        )}
+                        {u.status === 'disabled' && permLevel === 'delete' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setConfirmAction({ type: 'delete', userId: u.id, userName: u.name })}
+                            className="h-7 px-2 text-xs text-red-400 hover:text-red-400 hover:bg-red-400/10"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
+                            Delete
+                          </Button>
                         )}
                       </div>
                     </td>
@@ -508,11 +476,13 @@ function UsersTab({
 
 function RolesTab({
   roles,
+  permLevel,
   onSaveRole,
   onDeleteRole,
   onCreateRole,
 }: {
   roles: Role[];
+  permLevel: PermissionLevel;
   onSaveRole: (role: Role) => void;
   onDeleteRole: (roleId: string) => void;
   onCreateRole: () => void;
@@ -573,15 +543,17 @@ function RolesTab({
             <span className="truncate">{role.name}</span>
           </button>
         ))}
-        <Button
-          onClick={onCreateRole}
-          variant="outline"
-          size="sm"
-          className="mt-2 gap-1.5 border-border text-xs"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          Create Role
-        </Button>
+        {['edit', 'delete'].includes(permLevel) && (
+          <Button
+            onClick={onCreateRole}
+            variant="outline"
+            size="sm"
+            className="mt-2 gap-1.5 border-border text-xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Create Role
+          </Button>
+        )}
       </div>
 
       {/* Right panel - role editor */}
@@ -668,21 +640,21 @@ function RolesTab({
 
           {/* Actions */}
           <div className="flex items-center gap-2 mt-5 pt-4 border-t border-border">
-            {!displayRole.isSystem && !editingRole && (
-              <>
-                <Button onClick={() => startEdit(displayRole)} size="sm">
-                  Edit Role
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setConfirmDelete(true)}
-                  className="text-red-400 hover:text-red-400 hover:bg-red-400/10"
-                >
-                  <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                  Delete Role
-                </Button>
-              </>
+            {!displayRole.isSystem && !editingRole && ['edit', 'delete'].includes(permLevel) && (
+              <Button onClick={() => startEdit(displayRole)} size="sm">
+                Edit Role
+              </Button>
+            )}
+            {!displayRole.isSystem && !editingRole && permLevel === 'delete' && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setConfirmDelete(true)}
+                className="text-red-400 hover:text-red-400 hover:bg-red-400/10"
+              >
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                Delete Role
+              </Button>
             )}
             {editingRole && !editingRole.isSystem && (
               <>
@@ -719,10 +691,12 @@ function RolesTab({
 
 function InvitationsTab({
   invitations,
+  permLevel,
   onResend,
   onCancel,
 }: {
   invitations: Invitation[];
+  permLevel: PermissionLevel;
   onResend: (id: string) => void;
   onCancel: (id: string) => void;
 }) {
@@ -763,27 +737,27 @@ function InvitationsTab({
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5 justify-end">
-                      {inv.status === 'pending' && (
-                        <>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onResend(inv.id)}
-                            className="h-7 px-2 text-xs text-blue-400 hover:text-blue-400 hover:bg-blue-400/10"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5 mr-1" />
-                            Resend
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onCancel(inv.id)}
-                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                          >
-                            <X className="w-3.5 h-3.5 mr-1" />
-                            Cancel
-                          </Button>
-                        </>
+                      {inv.status === 'pending' && ['edit', 'delete'].includes(permLevel) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onResend(inv.id)}
+                          className="h-7 px-2 text-xs text-blue-400 hover:text-blue-400 hover:bg-blue-400/10"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 mr-1" />
+                          Resend
+                        </Button>
+                      )}
+                      {inv.status === 'pending' && permLevel === 'delete' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onCancel(inv.id)}
+                          className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="w-3.5 h-3.5 mr-1" />
+                          Cancel
+                        </Button>
                       )}
                     </div>
                   </td>
@@ -902,7 +876,8 @@ export default function SettingsPage() {
   const handleDeleteUser = async (id: string) => {
     const res = await apiFetch(`/api/users/${id}`, { method: 'DELETE' });
     if (!res.ok) { const d = await res.json().catch(() => ({})); showToast((d as {error?:string}).error || 'Failed to delete user.', true); return; }
-    setUsers(prev => prev.filter(u => u.id !== id));
+    // Soft-delete: mark as deleted in UI, keep in list greyed out
+    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: 'deleted' as UserStatus } : u));
     showToast('User deleted.');
   };
 
@@ -985,7 +960,9 @@ export default function SettingsPage() {
     setInvitations(prev => [invitation, ...prev]);
   };
 
-  const handleResendInvitation = (_id: string) => {
+  const handleResendInvitation = async (id: string) => {
+    const res = await apiFetch(`/api/users/invitations/${id}/resend`, { method: 'POST' });
+    if (!res.ok) { showToast('Failed to resend invitation.', true); return; }
     showToast('Invitation resent.');
   };
 
@@ -1050,12 +1027,10 @@ export default function SettingsPage() {
                 users={users}
                 roles={roles}
                 currentUserId={user?.id ?? ''}
-                canEdit={['edit', 'full'].includes(permissions?.settings ?? '')}
+                permLevel={permissions?.settings ?? 'none'}
                 onDisable={handleDisable}
                 onEnable={handleEnable}
                 onDelete={handleDeleteUser}
-                onResendInvite={handleResendInvite}
-                onCancelInvite={handleCancelInvite}
                 onInvite={() => setInviteModalOpen(true)}
                 onEditRole={handleEditRole}
               />
@@ -1064,6 +1039,7 @@ export default function SettingsPage() {
             <TabsContent value="roles">
               <RolesTab
                 roles={roles}
+                permLevel={permissions?.settings ?? 'none'}
                 onSaveRole={handleSaveRole}
                 onDeleteRole={handleDeleteRole}
                 onCreateRole={handleCreateRole}
@@ -1073,6 +1049,7 @@ export default function SettingsPage() {
             <TabsContent value="invitations">
               <InvitationsTab
                 invitations={invitations}
+                permLevel={permissions?.settings ?? 'none'}
                 onResend={handleResendInvitation}
                 onCancel={handleCancelInvitation}
               />

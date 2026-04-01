@@ -5,11 +5,11 @@ export function canView(permissions: MenuPermissions, menu: keyof MenuPermission
 }
 
 export function canEdit(permissions: MenuPermissions, menu: keyof MenuPermissions): boolean {
-  return permissions[menu] === 'edit' || permissions[menu] === 'full'
+  return permissions[menu] === 'edit' || permissions[menu] === 'delete'
 }
 
-export function canFullAccess(permissions: MenuPermissions, menu: keyof MenuPermissions): boolean {
-  return permissions[menu] === 'full'
+export function canDelete(permissions: MenuPermissions, menu: keyof MenuPermissions): boolean {
+  return permissions[menu] === 'delete'
 }
 
 // Phase 2: This will call the backend API to verify JWT + permissions

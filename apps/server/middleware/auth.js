@@ -34,6 +34,10 @@ const verifyToken = async (req, res, next) => {
     const userDoc = usersSnap.docs[0]
     const userData = userDoc.data()
 
+    if (userData.deleted) {
+      return res.status(401).json({ error: 'Unauthorized: User not found or inactive' })
+    }
+
     if (userData.status !== 'active') {
       return res.status(401).json({ error: 'Unauthorized: User not found or inactive' })
     }
@@ -77,7 +81,7 @@ const verifyToken = async (req, res, next) => {
 }
 
 const requirePermission = (menu, level = 'view') => (req, res, next) => {
-  const levels = ['none', 'view', 'edit', 'full']
+  const levels = ['none', 'view', 'edit', 'delete']
   const userLevel = req.user?.permissions?.[menu] ?? 'none'
   if (levels.indexOf(userLevel) >= levels.indexOf(level)) return next()
   return res.status(403).json({ error: `Forbidden: Requires '${level}' permission on '${menu}'` })

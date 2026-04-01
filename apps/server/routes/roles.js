@@ -26,7 +26,7 @@ router.get('/', async (req, res) => {
 })
 
 // POST /api/roles — create role (requires settings full)
-router.post('/', requirePermission('settings', 'full'), async (req, res) => {
+router.post('/', requirePermission('settings', 'delete'), async (req, res) => {
   const { name, description, ...perms } = req.body
   if (!name) {
     return res.status(400).json({ error: 'name is required' })
@@ -66,7 +66,7 @@ router.post('/', requirePermission('settings', 'full'), async (req, res) => {
 })
 
 // PUT /api/roles/:id — update role (requires settings full)
-router.put('/:id', requirePermission('settings', 'full'), async (req, res) => {
+router.put('/:id', requirePermission('settings', 'delete'), async (req, res) => {
   const { id } = req.params
   const { name, description, ...perms } = req.body
 
@@ -93,7 +93,7 @@ router.put('/:id', requirePermission('settings', 'full'), async (req, res) => {
 })
 
 // DELETE /api/roles/:id — delete non-system role (requires settings full)
-router.delete('/:id', requirePermission('settings', 'full'), async (req, res) => {
+router.delete('/:id', requirePermission('settings', 'delete'), async (req, res) => {
   const { id } = req.params
 
   try {
